@@ -71,21 +71,43 @@ export async function callGemini(prompt) {
 
 
 // 🔁 Fallback function (OpenRouter)
-async function callOpenRouter(prompt) {
+async function callOpenRouter(prompt, apiKey) {
+  if (!apiKey) {
+    return "Missing OpenRouter API key";
+  }
+
   try {
-    const res = await fetch("/api/openrouter", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": window.location.origin, // ✅ dynamic fix
+        "X-Title": "GigShield"
       },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({
+        model: "openrouter/auto",
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      })
     });
 
-    const data = await res.json();
-    return data.reply || "No response";
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("OpenRouter error:", data);
+      return data?.error?.message || "Fallback failed";
+    }
+
+    return data.choices?.[0]?.message?.content || "No response";
 
   } catch (err) {
-    return "Fallback failed";
+    console.error("Fallback crashed:", err);
+    return "AI is analyzing your GigScore...";
   }
 }
 
